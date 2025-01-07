@@ -1,7 +1,7 @@
 #!/usr/bin/lua
 local socket = require("socket")  -- 使用 luasocket 来处理 TCP 连接
 local cjson = require("cjson")    -- 用于 JSON 编码和解码
-local urlencode = require("socket.url").escape  -- 用于 URL 解码
+local urlencode = require("socket.url").unescape  -- 用于 URL 解码
 
 -- 解析接收到的数据
 local function handle_request(data, content_type)
@@ -9,10 +9,11 @@ local function handle_request(data, content_type)
 
     if content_type == "application/json" then
         -- 解析 JSON 数据
-        local json_data, err = pcall(cjson.decode, data)
-        if not json_data then
+        local success, json_data = pcall(cjson.decode, data)
+        
+        if not success then
             -- 如果解析失败，返回 400 错误
-            print("JSON Decode Error: " .. err)  -- 打印解析错误
+            print("JSON Decode Error: " .. json_data)  -- 打印解析错误
             return '{"status":"error","message":"Invalid JSON"}', 400
         end
 
@@ -42,9 +43,16 @@ local function handle_request(data, content_type)
         end
     elseif content_type == "application/x-www-form-urlencoded" then
         -- 解析 x-www-form-urlencoded 数据
+        print("Processing x-www-form-urlencoded data")
+        
+        -- 解析表单数据，使用 URL 解码
         local ssid, passwd = data:match('ssid=([^&]+)&passwd=([^&]+)')
         
-        print("Parsed x-www-form-urlencoded: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
+        -- URL 解码参数
+        ssid = ssid and urlencode(ssid) or nil
+        passwd = passwd and urlencode(passwd) or nil
+
+        print("Parsed x-www-form-urlencoded: ssid=" .. (ssid or "nil") .. ", passwd=" .. (passwd or "nil"))  -- 输出解析后的数据
         
         if not ssid or not passwd then
             -- 如果缺少 ssid 或 passwd，返回 400 错误
@@ -81,7 +89,7 @@ local function listen_on_socket(host, port)
 
     print("Server listening on " .. host .. ":" .. port)
 
-    --server:settimeout(10)  -- 设置服务器超时
+    server:settimeout(10)  -- 设置服务器超时
 
     while true do
         local client, err = server:accept()  -- 接受客户端连接
@@ -92,50 +100,52 @@ local function listen_on_socket(host, port)
 
         client:settimeout(10)           -- 设置客户端超时
 
-        --[[
         print("Client connected")
-        local request, err = client:receive()
-        if not err then
-            print("receive request: " .. request)
-        end
-        --]]
 
-        ---[[
         -- 读取请求的头部（直到空行）
-        local request_header, err = client:receive('*l')
-        if not err then
-            print("receive header: " .. request_header)
-            -- 获取 Content-Type，假设为 "application/x-www-form-urlencoded" 或 "application/json"
-            local content_type = "application/json"  -- 默认处理 JSON 数据
-            for line in request_header:gmatch("([^\r\n]*)") do
-                if line:match("Content%-Type:") then
-                    content_type = line:match("Content%-Type: ([^%s]+)")  -- 获取 Content-Type
-                    break
-                end
-            end
+        local request_header = {}
+        local line, err = client:receive('*l')
+        while line and line ~= "" do
+            table.insert(request_header, line)
+            line, err = client:receive('*l')
+        end
 
-            print("receive next data...")
-            -- 读取请求的正文（数据）
-            local data, err = client:receive('*a')  -- 接收所有数据
-            if not err then
-                -- 处理请求并生成响应
-                local response, status_code = handle_request(data, content_type)
+        -- 输出请求头，方便调试
+        print("Request Headers: ")
+        for _, v in ipairs(request_header) do
+            print(v)
+        end
 
-                -- 生成 HTTP 响应头
-                local content_length = string.len(response)
-                local response_header = string.format(
-                    "HTTP/1.1 %d OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n",
-                    status_code, content_length
-                )
-
-                -- 发送响应
-                client:send(response_header)
-                client:send(response)
-            else
-                print("Error receiving data: " .. err)  -- 输出接收数据错误信息
+        -- 获取 Content-Type 和 Content-Length
+        local content_type = "application/json"  -- 默认处理 JSON 数据
+        local content_length = 0
+        for _, header_line in ipairs(request_header) do
+            if header_line:match("Content%-Type:") then
+                content_type = header_line:match("Content%-Type: ([^%s]+)")  -- 获取 Content-Type
+            elseif header_line:match("Content%-Length:") then
+                content_length = tonumber(header_line:match("Content%-Length: (%d+)"))  -- 获取 Content-Length
             end
         end
-        --]]
+
+        -- 读取请求体（根据 Content-Length）
+        local data, err = client:receive(content_length)  -- 根据 Content-Length 读取数据
+        if not err then
+            -- 处理请求并生成响应
+            local response, status_code = handle_request(data, content_type)
+
+            -- 生成 HTTP 响应头
+            local content_length = string.len(response)
+            local response_header = string.format(
+                "HTTP/1.1 %d OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n",
+                status_code, content_length
+            )
+
+            -- 发送响应
+            client:send(response_header)
+            client:send(response)
+        else
+            print("Error receiving data: " .. err)  -- 输出接收数据错误信息
+        end
         client:close()  -- 关闭客户端连接
     end
 end
