@@ -7,43 +7,43 @@ local urlencode = require("socket.url").unescape  -- 用于 URL 解码
 local function handle_request(data, content_type)
     print("Received Data: " .. data)  -- 输出接收到的原始数据
 
-    if content_type == "application/json" then
-        -- 解析 JSON 数据
-        local success, json_data = pcall(cjson.decode, data)
-
-        if not success then
-            -- 如果解析失败，返回 400 错误
-            print("JSON Decode Error: " .. json_data)  -- 打印解析错误
-            return '{"status":"error","message":"Invalid JSON"}', 400
-        end
-
-        local ssid = json_data.ssid
-        local passwd = json_data.passwd
-
-        print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
-
-        if not ssid or not passwd then
-            -- 如果缺少 ssid 或 passwd，返回 400 错误
-            return '{"status":"error","message":"Invalid SSID or password"}', 400
-        end
-
-        -- 调用 wpa_passphrase 生成配置文件
-        local config_file = "/tmp/wpa_supplicant.conf"
-        local cmd = string.format('wpa_passphrase "%s" "%s" > %s', ssid, passwd, config_file)
-        local handle = io.popen(cmd)
-        local result = handle:read("*a")
-        handle:close()
-
-        if result == "" then
-            -- 如果生成配置文件失败，返回 500 错误
-            return '{"status":"error","message":"Failed to generate configuration"}', 500
-        else
-            -- 生成配置成功，返回 200 响应
-            return '{"status":"success","message":"Configuration generated successfully"}', 200
-        end
-    else
+    if content_type ~= "application/json" then
         -- 如果内容类型不支持，返回 415 错误
         return '{"status":"error","message":"Unsupported Content-Type"}', 415
+    end
+
+    -- 解析 JSON 数据
+    local success, json_data = pcall(cjson.decode, data)
+
+    if not success then
+        -- 如果解析失败，返回 400 错误
+        print("JSON Decode Error: " .. json_data)  -- 打印解析错误
+        return '{"status":"error","message":"Invalid JSON"}', 400
+    end
+
+    local ssid = json_data.ssid
+    local passwd = json_data.passwd
+
+    print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
+
+    if not ssid or not passwd then
+        -- 如果缺少 ssid 或 passwd，返回 400 错误
+        return '{"status":"error","message":"Invalid SSID or password"}', 400
+    end
+
+    -- 调用 wpa_passphrase 生成配置文件
+    local config_file = "/tmp/wpa_supplicant.conf"
+    local cmd = string.format('wpa_passphrase "%s" "%s" > %s', ssid, passwd, config_file)
+    local handle = io.popen(cmd)
+    local result = handle:read("*a")
+    handle:close()
+
+    if result == "" then
+        -- 如果生成配置文件失败，返回 500 错误
+        return '{"status":"error","message":"Failed to generate configuration"}', 500
+    else
+        -- 生成配置成功，返回 200 响应
+        return '{"status":"success","message":"Configuration generated successfully"}', 200
     end
 end
 
