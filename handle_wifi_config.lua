@@ -108,6 +108,8 @@ local function listen_on_socket(host, port)
                 status_code, content_length
             )
 
+            print("Response Headers: " .. response_header)
+            print("Response Body: " .. response)
             -- 发送响应
             client:send(response_header)
             client:send(response)
