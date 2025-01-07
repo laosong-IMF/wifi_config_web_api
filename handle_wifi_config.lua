@@ -10,7 +10,7 @@ local function handle_request(data, content_type)
     if content_type == "application/json" then
         -- 解析 JSON 数据
         local success, json_data = pcall(cjson.decode, data)
-        
+
         if not success then
             -- 如果解析失败，返回 400 错误
             print("JSON Decode Error: " .. json_data)  -- 打印解析错误
@@ -22,38 +22,6 @@ local function handle_request(data, content_type)
 
         print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
 
-        if not ssid or not passwd then
-            -- 如果缺少 ssid 或 passwd，返回 400 错误
-            return '{"status":"error","message":"Invalid SSID or password"}', 400
-        end
-
-        -- 调用 wpa_passphrase 生成配置文件
-        local config_file = "/tmp/wpa_supplicant.conf"
-        local cmd = string.format('wpa_passphrase "%s" "%s" > %s', ssid, passwd, config_file)
-        local handle = io.popen(cmd)
-        local result = handle:read("*a")
-        handle:close()
-
-        if result == "" then
-            -- 如果生成配置文件失败，返回 500 错误
-            return '{"status":"error","message":"Failed to generate configuration"}', 500
-        else
-            -- 生成配置成功，返回 200 响应
-            return '{"status":"success","message":"Configuration generated successfully"}', 200
-        end
-    elseif content_type == "application/x-www-form-urlencoded" then
-        -- 解析 x-www-form-urlencoded 数据
-        print("Processing x-www-form-urlencoded data")
-        
-        -- 解析表单数据，使用 URL 解码
-        local ssid, passwd = data:match('ssid=([^&]+)&passwd=([^&]+)')
-        
-        -- URL 解码参数
-        ssid = ssid and urlencode(ssid) or nil
-        passwd = passwd and urlencode(passwd) or nil
-
-        print("Parsed x-www-form-urlencoded: ssid=" .. (ssid or "nil") .. ", passwd=" .. (passwd or "nil"))  -- 输出解析后的数据
-        
         if not ssid or not passwd then
             -- 如果缺少 ssid 或 passwd，返回 400 错误
             return '{"status":"error","message":"Invalid SSID or password"}', 400
@@ -89,7 +57,7 @@ local function listen_on_socket(host, port)
 
     print("Server listening on " .. host .. ":" .. port)
 
-    server:settimeout(10)  -- 设置服务器超时
+    --server:settimeout(10)  -- 设置服务器超时
 
     while true do
         local client, err = server:accept()  -- 接受客户端连接
