@@ -2,48 +2,63 @@
 local socket = require("socket")  -- 使用 luasocket 来处理 TCP 连接
 local cjson = require("cjson")    -- 用于 JSON 编码和解码
 local urlencode = require("socket.url").unescape  -- 用于 URL 解码
+local io = require("io")
 
 -- 解析接收到的数据
 local function handle_request(data, content_type)
     print("Received Data: " .. data)  -- 输出接收到的原始数据
 
-    if content_type ~= "application/json" then
-        -- 如果内容类型不支持，返回 415 错误
-        return '{"status":"error","message":"Unsupported Content-Type"}', 415
-    end
+    if content_type == "application/json" then
+        -- 解析 JSON 数据
+        local success, json_data = pcall(cjson.decode, data)
+        
+        if not success then
+            -- 如果解析失败，返回 400 错误
+            print("JSON Decode Error: " .. json_data)  -- 打印解析错误
+            return '{"status":"error","message":"Invalid JSON"}', 400
+        end
 
-    -- 解析 JSON 数据
-    local success, json_data = pcall(cjson.decode, data)
+        local ssid = json_data.ssid
+        local passwd = json_data.passwd
 
-    if not success then
-        -- 如果解析失败，返回 400 错误
-        print("JSON Decode Error: " .. json_data)  -- 打印解析错误
-        return '{"status":"error","message":"Invalid JSON"}', 400
-    end
+        print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
 
-    local ssid = json_data.ssid
-    local passwd = json_data.passwd
+        if not ssid or not passwd then
+            -- 如果缺少 ssid 或 passwd，返回 400 错误
+            return '{"status":"error","message":"Invalid SSID or password"}', 400
+        end
 
-    print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
+        -- 调用 wpa_passphrase 生成配置文件
+        local config_file = "/tmp/wpa_supplicant.conf"
+        local cmd = string.format('wpa_passphrase "%s" "%s" > %s', ssid, passwd, config_file)
+        local handle = io.popen(cmd)
 
-    if not ssid or not passwd then
-        -- 如果缺少 ssid 或 passwd，返回 400 错误
-        return '{"status":"error","message":"Invalid SSID or password"}', 400
-    end
+        -- 检查命令是否成功执行
+        if handle == nil then
+            print("Error executing wpa_passphrase command")  -- 打印错误
+            return '{"status":"error","message":"Failed to generate configuration"}', 500
+        end
 
-    -- 调用 wpa_passphrase 生成配置文件
-    local config_file = "/tmp/wpa_supplicant.conf"
-    local cmd = string.format('wpa_passphrase "%s" "%s" > %s', ssid, passwd, config_file)
-    local handle = io.popen(cmd)
-    local result = handle:read("*a")
-    handle:close()
+        handle:close()
 
-    if result == "" then
-        -- 如果生成配置文件失败，返回 500 错误
-        return '{"status":"error","message":"Failed to generate configuration"}', 500
+        -- 检查文件是否成功创建并且包含内容
+        local file = io.open(config_file, "r")
+        if not file then
+            print("Failed to open wpa_supplicant.conf")  -- 打印错误
+            return '{"status":"error","message":"Failed to generate configuration"}', 500
+        end
+        local file_content = file:read("*a")
+        file:close()
+
+        if file_content == "" then
+            print("wpa_supplicant.conf is empty")  -- 打印错误
+            return '{"status":"error","message":"Failed to generate configuration"}', 500
+        else
+            print("wpa_supplicant.conf generated successfully")  -- 打印成功
+            return '{"status":"success","message":"Configuration generated successfully"}', 200
+        end
     else
-        -- 生成配置成功，返回 200 响应
-        return '{"status":"success","message":"Configuration generated successfully"}', 200
+        return '{"status":"error","message":"Unsupported Content-Type"}', 415
     end
 end
 
@@ -57,7 +72,7 @@ local function listen_on_socket(host, port)
 
     print("Server listening on " .. host .. ":" .. port)
 
-    --server:settimeout(10)  -- 设置服务器超时
+    server:settimeout(10)  -- 设置服务器超时
 
     while true do
         local client, err = server:accept()  -- 接受客户端连接
@@ -108,8 +123,6 @@ local function listen_on_socket(host, port)
                 status_code, content_length
             )
 
-            print("Response Headers: " .. response_header)
-            print("Response Body: " .. response)
             -- 发送响应
             client:send(response_header)
             client:send(response)
