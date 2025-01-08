@@ -8,71 +8,71 @@ local io = require("io")
 local function handle_request(data, content_type)
     print("Received Data: " .. data)  -- 输出接收到的原始数据
 
-    if content_type == "application/json" then
-        -- 解析 JSON 数据
-        local success, json_data = pcall(cjson.decode, data)
-        
-        if not success then
-            -- 如果解析失败，返回 400 错误
-            print("JSON Decode Error: " .. json_data)  -- 打印解析错误
-            return '{"status":"error","message":"Invalid JSON"}', 400
-        end
+    -- 确保 Content-Type 为 application/json
+    if content_type ~= "application/json" then
+        return '{"status":"error","message":"Invalid Content-Type"}', 400
+    end
 
-        local ssid = json_data.ssid
-        local passwd = json_data.passwd
+    -- 解析 JSON 数据
+    local success, json_data = pcall(cjson.decode, data)
+    if not success then
+        -- 如果解析失败，返回 400 错误
+        print("JSON Decode Error: " .. json_data)  -- 打印解析错误
+        return '{"status":"error","message":"Invalid JSON"}', 400
+    end
 
-        print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
+    local ssid = json_data.ssid
+    local passwd = json_data.passwd
 
-        if not ssid or not passwd then
-            -- 如果缺少 ssid 或 passwd，返回 400 错误
-            return '{"status":"error","message":"Invalid SSID or password"}', 400
-        end
+    print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
 
-        -- 调用 wpa_passphrase 生成配置文件
-        local config_file = "/tmp/wpa_supplicant.conf"
-        local cmd = string.format('wpa_passphrase "%s" "%s"', ssid, passwd)
-        local handle = io.popen(cmd)
+    if not ssid or not passwd then
+        -- 如果缺少 ssid 或 passwd，返回 400 错误
+        return '{"status":"error","message":"Invalid SSID or password"}', 400
+    end
 
-        -- 检查命令是否成功执行
-        if handle == nil then
-            print("Error executing wpa_passphrase command")  -- 打印错误
-            return '{"status":"error","message":"Failed to generate configuration"}', 500
-        end
+    -- 调用 wpa_passphrase 生成配置文件
+    local config_file = "/tmp/wpa_supplicant.conf"
+    local cmd = string.format('wpa_passphrase "%s" "%s"', ssid, passwd)
+    local handle = io.popen(cmd)
 
-        local result = handle:read("*a")  -- 获取 wpa_passphrase 输出
-        handle:close()
+    -- 检查命令是否成功执行
+    if handle == nil then
+        print("Error executing wpa_passphrase command")  -- 打印错误
+        return '{"status":"error","message":"Failed to generate configuration"}', 500
+    end
 
-        -- 检查文件是否成功创建并且包含内容
-        local file = io.open(config_file, "w")
-        if not file then
-            print("Failed to open wpa_supplicant.conf for writing")  -- 打印错误
-            return '{"status":"error","message":"Failed to generate configuration"}', 500
-        end
+    local result = handle:read("*a")  -- 获取 wpa_passphrase 输出
+    handle:close()
 
-        -- 写入固定的头部内容
-        file:write("ctrl_interface=/run/wpa_supplicant\n")
-        file:write("ctrl_interface_group=root\n")
-        file:write("update_config=1\n\n")
+    -- 检查文件是否成功创建并且包含内容
+    local file = io.open(config_file, "w")
+    if not file then
+        print("Failed to open wpa_supplicant.conf for writing")  -- 打印错误
+        return '{"status":"error","message":"Failed to generate configuration"}', 500
+    end
 
-        -- 写入 wpa_passphrase 生成的内容
-        file:write(result)
+    -- 写入固定的头部内容
+    file:write("ctrl_interface=/run/wpa_supplicant\n")
+    file:write("ctrl_interface_group=root\n")
+    file:write("update_config=1\n\n")
 
-        file:close()
+    -- 写入 wpa_passphrase 生成的内容
+    file:write(result)
 
-        -- 检查文件内容是否成功写入
-        local file_check = io.open(config_file, "r")
-        local file_content = file_check:read("*a")
-        file_check:close()
+    file:close()
 
-        if file_content == "" then
-            print("wpa_supplicant.conf is empty")  -- 打印错误
-            return '{"status":"error","message":"Failed to generate configuration"}', 500
-        else
-            print("wpa_supplicant.conf generated successfully")  -- 打印成功
-            return '{"status":"success","message":"Configuration generated successfully"}', 200
-        end
+    -- 检查文件内容是否成功写入
+    local file_check = io.open(config_file, "r")
+    local file_content = file_check:read("*a")
+    file_check:close()
+
+    if file_content == "" then
+        print("wpa_supplicant.conf is empty")  -- 打印错误
+        return '{"status":"error","message":"Failed to generate configuration"}', 500
     else
-        return '{"status":"error","message":"Unsupported Content-Type"}', 415
+        print("wpa_supplicant.conf generated successfully")  -- 打印成功
+        return '{"status":"success","message":"Configuration generated successfully"}', 200
     end
 end
 
