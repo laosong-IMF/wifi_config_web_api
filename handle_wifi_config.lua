@@ -30,7 +30,7 @@ local function handle_request(data, content_type)
 
         -- 调用 wpa_passphrase 生成配置文件
         local config_file = "/tmp/wpa_supplicant.conf"
-        local cmd = string.format('wpa_passphrase "%s" "%s" > %s', ssid, passwd, config_file)
+        local cmd = string.format('wpa_passphrase "%s" "%s"', ssid, passwd)
         local handle = io.popen(cmd)
 
         -- 检查命令是否成功执行
@@ -39,16 +39,30 @@ local function handle_request(data, content_type)
             return '{"status":"error","message":"Failed to generate configuration"}', 500
         end
 
+        local result = handle:read("*a")  -- 获取 wpa_passphrase 输出
         handle:close()
 
         -- 检查文件是否成功创建并且包含内容
-        local file = io.open(config_file, "r")
+        local file = io.open(config_file, "w")
         if not file then
-            print("Failed to open wpa_supplicant.conf")  -- 打印错误
+            print("Failed to open wpa_supplicant.conf for writing")  -- 打印错误
             return '{"status":"error","message":"Failed to generate configuration"}', 500
         end
-        local file_content = file:read("*a")
+
+        -- 写入固定的头部内容
+        file:write("ctrl_interface=/run/wpa_supplicant\n")
+        file:write("ctrl_interface_group=root\n")
+        file:write("update_config=1\n\n")
+
+        -- 写入 wpa_passphrase 生成的内容
+        file:write(result)
+
         file:close()
+
+        -- 检查文件内容是否成功写入
+        local file_check = io.open(config_file, "r")
+        local file_content = file_check:read("*a")
+        file_check:close()
 
         if file_content == "" then
             print("wpa_supplicant.conf is empty")  -- 打印错误
