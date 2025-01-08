@@ -1,7 +1,6 @@
 #!/usr/bin/lua
 local socket = require("socket")  -- 使用 luasocket 来处理 TCP 连接
 local cjson = require("cjson")    -- 用于 JSON 编码和解码
-local urlencode = require("socket.url").unescape  -- 用于 URL 解码
 local io = require("io")
 
 -- 解析接收到的数据
@@ -34,16 +33,17 @@ local function handle_request(data, content_type)
     -- 调用 wpa_passphrase 生成配置文件
     local config_file = "/tmp/wpa_supplicant.conf"
     local cmd = string.format('wpa_passphrase "%s" "%s"', ssid, passwd)
-    local handle = io.popen(cmd)
+    local handle = io.popen(cmd .. " 2>&1")  -- 捕获标准输出和错误输出
 
-    -- 检查命令是否成功执行
-    if handle == nil then
-        print("Error executing wpa_passphrase command")  -- 打印错误
-        return '{"status":"error","message":"Failed to generate configuration"}', 500
-    end
-
-    local result = handle:read("*a")  -- 获取 wpa_passphrase 输出
+    -- 获取 wpa_passphrase 输出
+    local result = handle:read("*a")
     handle:close()
+
+    -- 如果 wpa_passphrase 执行失败，返回错误信息给客户端
+    if result:find("Passphrase must be") or result:find("Error") then
+        print("wpa_passphrase error: " .. result)  -- 打印错误
+        return string.format('{"status":"error","message":"%s"}', result), 400
+    end
 
     -- 检查文件是否成功创建并且包含内容
     local file = io.open(config_file, "w")
