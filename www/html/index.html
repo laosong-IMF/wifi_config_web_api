@@ -84,39 +84,70 @@
         }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <h2>Wi-Fi Configuration</h2>
-    <form action="#" method="POST">
-        <label for="ssid">SSID:</label>
-        <input type="text" id="ssid" name="ssid" placeholder="Enter Wi-Fi Network Name (SSID)" required>
+    <div class="container">
+        <h2>Wi-Fi Configuration</h2>
+        <form id="wifiForm" action="#" method="POST">
+            <label for="ssid">SSID:</label>
+            <input type="text" id="ssid" name="ssid" placeholder="Enter Wi-Fi Network Name (SSID)" required>
 
-        <label for="password">Password:</label>
-        <div class="password-container">
-            <input type="password" id="password" name="password" placeholder="Enter Wi-Fi Password" required>
-            <button type="button" class="toggle-password" id="togglePassword">👁️</button>
-        </div>
+            <label for="password">Password:</label>
+            <div class="password-container">
+                <input type="password" id="password" name="password" placeholder="Enter Wi-Fi Password" required>
+                <button type="button" class="toggle-password" id="togglePassword">👁️</button>
+            </div>
 
-        <button type="submit">Submit</button>
-    </form>
-</div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
 
-<script>
-    // 获取密码框和切换按钮
-    const togglePassword = document.getElementById('togglePassword');
-    const passwordField = document.getElementById('password');
+    <script>
+        // 获取密码框和切换按钮
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordField = document.getElementById('password');
 
-    // 添加点击事件监听器
-    togglePassword.addEventListener('click', function () {
-        // 切换密码框的类型
-        const type = passwordField.type === 'password' ? 'text' : 'password';
-        passwordField.type = type;
+        // 添加点击事件监听器
+        togglePassword.addEventListener('click', function () {
+            // 切换密码框的类型
+            const type = passwordField.type === 'password' ? 'text' : 'password';
+            passwordField.type = type;
 
-        // 更改按钮图标
-        togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
-    });
-</script>
+            // 更改按钮图标
+            togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
+        });
+    </script>
+
+    <script>
+        document.getElementById('wifiForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const ssid = document.getElementById('ssid').value;
+            const password = document.getElementById('password').value;
+
+            const data = {
+                ssid: ssid,
+                password: password
+            };
+
+            fetch('/wifi_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Wi-Fi configuration successful!');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('There was an error submitting your configuration.');
+            });
+        });
+    </script>
 
 </body>
 </html>

@@ -21,7 +21,7 @@ local function handle_request(data, content_type)
     end
 
     local ssid = json_data.ssid
-    local passwd = json_data.passwd
+    local passwd = json_data.password
 
     print("Parsed JSON: ssid=" .. ssid .. ", passwd=" .. passwd)  -- 输出解析后的数据
 
