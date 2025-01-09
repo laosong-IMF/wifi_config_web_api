@@ -86,7 +86,7 @@ local function listen_on_socket(host, port)
 
     print("Server listening on " .. host .. ":" .. port)
 
-    server:settimeout(10)  -- 设置服务器超时
+    --server:settimeout(10)  -- 设置服务器超时
 
     while true do
         local client, err = server:accept()  -- 接受客户端连接
