@@ -145,66 +145,77 @@
         <div id="params" class="tab-content">
             <h2>Device Parameters</h2>
             <div class="params">
-Connected to b8:27:eb:63:44:63 (on wlan0)
-SSID: pi-laosong
-freq: 2412
-RX: 92018924 bytes (410999 packets)
-TX: 7360067 bytes (53230 packets)
-signal: -20 dBm
-rx bitrate: 65.0 MBit/s MCS 7
-tx bitrate: 65.0 MBit/s MCS 7
+                Loading...
             </div>
         </div>
     </div>
 
     <script>
-        const tabs = document.querySelectorAll('.tab');
-        const contents = document.querySelectorAll('.tab-content');
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
 
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                contents.forEach(c => c.classList.remove('active'));
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    contents.forEach(c => c.classList.remove('active'));
 
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.tab).classList.add('active');
+                    tab.classList.add('active');
+                    document.getElementById(tab.dataset.tab).classList.add('active');
+
+                    if (tab.dataset.tab === 'params') {
+                        fetchDeviceParams();
+                    }
+                });
             });
-        });
 
-        const togglePassword = document.getElementById('togglePassword');
-        const passwordField = document.getElementById('password');
-
-        togglePassword.addEventListener('click', function () {
-            const type = passwordField.type === 'password' ? 'text' : 'password';
-            passwordField.type = type;
-            togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
-        });
-
-        document.getElementById('wifiForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-
-            const ssid = document.getElementById('ssid').value;
-            const password = document.getElementById('password').value;
-
-            const data = {
-                ssid: ssid,
-                password: password
+            const fetchDeviceParams = () => {
+                fetch('/dev_params')
+                    .then(response => response.text())
+                    .then(data => {
+                        document.querySelector('.params').textContent = data;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching device parameters:', error);
+                        document.querySelector('.params').textContent = 'Error fetching device parameters.';
+                    });
             };
 
-            fetch('/wifi_config', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert('Wi-Fi configuration successful!');
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('There was an error submitting your configuration.');
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordField = document.getElementById('password');
+
+            togglePassword.addEventListener('click', function () {
+                const type = passwordField.type === 'password' ? 'text' : 'password';
+                passwordField.type = type;
+                togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
+            });
+
+            document.getElementById('wifiForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const ssid = document.getElementById('ssid').value;
+                const password = document.getElementById('password').value;
+
+                const data = {
+                    ssid: ssid,
+                    password: password
+                };
+
+                fetch('/wifi_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Wi-Fi configuration successful!');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('There was an error submitting your configuration.');
+                });
             });
         });
     </script>
