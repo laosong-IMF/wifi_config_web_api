@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Configuration</title>
+    <title>Wi-Fi Configuration</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -116,6 +116,14 @@
             border-radius: 4px;
             white-space: pre-wrap;
         }
+
+        .auto-refresh-container {
+            margin-top: 20px;
+        }
+
+        .auto-refresh-checkbox {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -123,7 +131,7 @@
     <div class="container">
         <div class="tabs">
             <div class="tab active" data-tab="wifi">Wi-Fi Configuration</div>
-            <div class="tab" data-tab="params">Device Parameters</div>
+            <div class="tab" data-tab="params">Wi-Fi Parameters</div>
         </div>
 
         <div id="wifi" class="tab-content active">
@@ -143,7 +151,13 @@
         </div>
 
         <div id="params" class="tab-content">
-            <h2>Device Parameters</h2>
+            <h2>Wi-Fi Parameters</h2>
+            <div class="auto-refresh-container">
+                <label>
+                    <input type="checkbox" class="auto-refresh-checkbox" id="autoRefresh" checked>
+                    Enable Auto Refresh
+                </label>
+            </div>
             <div class="params">
                 Loading...
             </div>
@@ -221,6 +235,23 @@
                     alert('There was an error submitting your configuration.');
                 });
             });
+
+            // Auto-refresh logic for the Wi-Fi Parameters tab
+            const autoRefreshCheckbox = document.getElementById('autoRefresh');
+            let autoRefreshInterval;
+
+            autoRefreshCheckbox.addEventListener('change', () => {
+                if (autoRefreshCheckbox.checked) {
+                    autoRefreshInterval = setInterval(fetchDeviceParams, 5000); // Fetch every 5 seconds
+                } else {
+                    clearInterval(autoRefreshInterval); // Stop auto refresh
+                }
+            });
+
+            // Enable auto refresh by default
+            if (autoRefreshCheckbox.checked) {
+                autoRefreshInterval = setInterval(fetchDeviceParams, 5000);
+            }
         });
     </script>
 </body>
