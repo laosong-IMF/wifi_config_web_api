@@ -154,7 +154,7 @@
             <h2>Wi-Fi Parameters</h2>
             <div class="auto-refresh-container">
                 <label>
-                    <input type="checkbox" class="auto-refresh-checkbox" id="autoRefresh" checked>
+                    <input type="checkbox" class="auto-refresh-checkbox" id="autoRefresh">
                     Enable Auto Refresh
                 </label>
             </div>
@@ -248,7 +248,6 @@
                 }
             });
 
-            // Enable auto refresh by default
             if (autoRefreshCheckbox.checked) {
                 autoRefreshInterval = setInterval(fetchDeviceParams, 5000);
             }
