@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wi-Fi Configuration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .tab.active {
+            border-bottom: 3px solid #4CAF50;
+            color: #4CAF50;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .password-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            color: #888;
+            padding: 0;
+            width: auto;
+            height: auto;
+            z-index: 1;
+            top: 38%;
+            transform: translateY(-50%);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .params {
+            font-family: monospace;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+
+        .auto-refresh-container {
+            margin-top: 20px;
+        }
+
+        .auto-refresh-checkbox {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" data-tab="wifi">Wi-Fi Configuration</div>
+            <div class="tab" data-tab="params">Wi-Fi Parameters</div>
+        </div>
+
+        <div id="wifi" class="tab-content active">
+            <h2>Wi-Fi Configuration</h2>
+            <form id="wifiForm" action="#" method="POST">
+                <label for="ssid">SSID:</label>
+                <input type="text" id="ssid" name="ssid" placeholder="Enter Wi-Fi Network Name (SSID)" required>
+
+                <label for="password">Password:</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" placeholder="Enter Wi-Fi Password" required>
+                    <button type="button" class="toggle-password" id="togglePassword">👁️</button>
+                </div>
+
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+
+        <div id="params" class="tab-content">
+            <h2>Wi-Fi Parameters</h2>
+            <div class="auto-refresh-container">
+                <label>
+                    <input type="checkbox" class="auto-refresh-checkbox" id="autoRefresh" checked>
+                    Enable Auto Refresh
+                </label>
+            </div>
+            <div class="params">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    contents.forEach(c => c.classList.remove('active'));
+
+                    tab.classList.add('active');
+                    document.getElementById(tab.dataset.tab).classList.add('active');
+
+                    if (tab.dataset.tab === 'params') {
+                        fetchDeviceParams();
+                    }
+                });
+            });
+
+            const fetchDeviceParams = () => {
+                fetch('/dev_params')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.text();
+                    })
+                    .then(data => {
+                        document.querySelector('.params').textContent = data;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching device parameters:', error);
+                        document.querySelector('.params').textContent = 'Unable to fetch device parameters. Please ensure the service is running.';
+                    });
+            };
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordField = document.getElementById('password');
+
+            togglePassword.addEventListener('click', function () {
+                const type = passwordField.type === 'password' ? 'text' : 'password';
+                passwordField.type = type;
+                togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
+            });
+
+            document.getElementById('wifiForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const ssid = document.getElementById('ssid').value;
+                const password = document.getElementById('password').value;
+
+                const data = {
+                    ssid: ssid,
+                    password: password
+                };
+
+                fetch('/wifi_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Wi-Fi configuration successful!');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('There was an error submitting your configuration.');
+                });
+            });
+
+            // Auto-refresh logic for the Wi-Fi Parameters tab
+            const autoRefreshCheckbox = document.getElementById('autoRefresh');
+            let autoRefreshInterval;
+
+            autoRefreshCheckbox.addEventListener('change', () => {
+                if (autoRefreshCheckbox.checked) {
+                    autoRefreshInterval = setInterval(fetchDeviceParams, 5000); // Fetch every 5 seconds
+                } else {
+                    clearInterval(autoRefreshInterval); // Stop auto refresh
+                }
+            });
+
+            // Enable auto refresh by default
+            if (autoRefreshCheckbox.checked) {
+                autoRefreshInterval = setInterval(fetchDeviceParams, 5000);
+            }
+        });
+    </script>
+</body>
+</html>
+
