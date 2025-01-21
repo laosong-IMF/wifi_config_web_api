@@ -124,8 +124,36 @@
         .auto-refresh-checkbox {
             margin-right: 5px;
         }
+
+        /* for Wi-Fi Advanced Settings */
+        .hidden {
+            display: none;
+        }
+        .advanced-section {
+            margin-top: 20px;
+            padding-left: 20px;
+        }
+        .form-row {
+            margin-bottom: 15px;
+        }
+        .label-inline {
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .advanced-label {
+            font-size: 14px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+        /* 为了让复选框和文本在同一行显示 */
+        .checkbox-inline {
+            display: inline-flex;
+            align-items: center;
+        }
+
     </style>
 </head>
+
 <body>
 
     <div class="container">
@@ -144,6 +172,62 @@
                 <div class="password-container">
                     <input type="password" id="password" name="password" placeholder="Enter Wi-Fi Password" required>
                     <button type="button" class="toggle-password" id="togglePassword">👁️</button>
+                </div>
+
+                <!-- 高级设置勾选框 -->
+                <div class="form-row checkbox-inline">
+                    <input type="checkbox" id="advanced-toggle" name="advanced-toggle">
+                    <label for="advanced-toggle" class="advanced-label">Wi-Fi Advanced Settings</label>
+                </div>
+
+                <!-- Advanced settings section -->
+                <div class="advanced-section hidden" id="advanced-section">
+                    <!-- "Connect to a hidden network" 同一行显示 -->
+                    <div class="form-row checkbox-inline">
+                        <input type="checkbox" id="hidden-network" name="hidden-network">
+                        <label for="hidden-network">Connect to a hidden network</label>
+                    </div>
+
+                    <div class="form-row inline-block">
+                        <label for="key_mgmt" class="label-inline">Key Management:</label>
+                        <select id="key_mgmt" name="key_mgmt">
+                            <option value="NONE">NONE</option>
+                            <option value="WPA-PSK" selected>WPA-PSK</option>
+                            <option value="WPA-EAP">WPA-EAP</option>
+                            <option value="WEP">WEP</option>
+                            <option value="WPA3-PSK">WPA3-PSK</option>
+                            <option value="WPA3-EAP">WPA3-EAP</option>
+                        </select>
+                    </div>
+
+                    <!-- Network configuration method -->
+                    <div class="form-row inline-block">
+                        <label for="network-type" class="label-inline">IP Configuration Method:</label>
+                        <select id="network-type" name="network-type">
+                            <option value="dhcp" selected>DHCP</option>
+                            <option value="static">Static IP</option>
+                        </select>
+                    </div>
+
+                    <!-- Static IP settings (only shown when Static IP is selected) -->
+                    <div class="static-ip-settings hidden" id="static-ip-settings">
+                        <div class="form-row">
+                            <label for="ip">IP Address:</label>
+                            <input type="text" id="ip" name="ip" value="0.0.0.0" required>
+                        </div>
+                        <div class="form-row">
+                            <label for="gateway">Gateway:</label>
+                            <input type="text" id="gateway" name="gateway" value="0.0.0.0" required>
+                        </div>
+                        <div class="form-row">
+                            <label for="netmask">Subnet Mask:</label>
+                            <input type="text" id="netmask" name="netmask" value="0.0.0.0" required>
+                        </div>
+                        <div class="form-row">
+                            <label for="dns">DNS:</label>
+                            <input type="text" id="dns" name="dns" value="0.0.0.0" required>
+                        </div>
+                    </div>
                 </div>
 
                 <button type="submit">Submit</button>
@@ -165,6 +249,44 @@
     </div>
 
     <script>
+        // 正则表达式，用于验证IPv4地址
+        const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
+        // 初始化时，根据勾选框的状态来决定是否显示高级设置
+        window.addEventListener('DOMContentLoaded', function() {
+            const advancedToggle = document.getElementById('advanced-toggle');
+            const advancedSection = document.getElementById('advanced-section');
+            const staticIpSettings = document.getElementById('static-ip-settings');
+            const networkType = document.getElementById('network-type');
+
+            // 勾选框状态决定是否显示高级设置
+            if (advancedToggle.checked) {
+                advancedSection.classList.remove('hidden');
+                if (networkType.value === 'static') {
+                    staticIpSettings.classList.remove('hidden');
+                }
+            }
+
+            // 根据 IP 配置方式切换静态 IP 设置
+            networkType.addEventListener('change', function() {
+                if (networkType.value === 'static') {
+                    staticIpSettings.classList.remove('hidden');
+                } else {
+                    staticIpSettings.classList.add('hidden');
+                }
+            });
+        });
+
+        // 勾选框的状态变化
+        document.getElementById('advanced-toggle').addEventListener('change', function() {
+            const advancedSection = document.getElementById('advanced-section');
+            if (this.checked) {
+                advancedSection.classList.remove('hidden');
+            } else {
+                advancedSection.classList.add('hidden');
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             const tabs = document.querySelectorAll('.tab');
             const contents = document.querySelectorAll('.tab-content');
@@ -210,29 +332,66 @@
 
             document.getElementById('wifiForm').addEventListener('submit', function(event) {
                 event.preventDefault();
-
-                const ssid = document.getElementById('ssid').value;
-                const password = document.getElementById('password').value;
-
+                const formData = new FormData(this);
+                const networkType = formData.get('network-type');
                 const data = {
-                    ssid: ssid,
-                    password: password
+                    ssid: formData.get('ssid'),
+                    password: formData.get('password')
                 };
+
+                // 如果勾选了“Wi-Fi Advanced Settings”选框
+                const advancedSettingsEnabled = formData.has('advanced-toggle') && formData.get('advanced-toggle') === 'on';
+
+                if (advancedSettingsEnabled) {
+                    // 如果 advanced_settings_enabled 被勾选，收集所有的高级设置数据
+                    const advancedData = {
+                        hidden_network: formData.has('hidden-network'),
+                        key_mgmt: formData.get('key_mgmt') || 'WPA-PSK',
+                        network_type: networkType
+                    };
+
+                    // 如果 network_type 为 static，确保静态 IP 配置字段填写完整并符合IPv4格式
+                    if (networkType === 'static') {
+                        const ip = formData.get('ip');
+                        const gateway = formData.get('gateway');
+                        const netmask = formData.get('netmask');
+                        const dns = formData.get('dns');
+
+                        // 验证静态 IP 配置字段
+                        if (!ipv4Regex.test(ip) || !ipv4Regex.test(gateway) || !ipv4Regex.test(netmask) || !ipv4Regex.test(dns)) {
+                            alert("Please enter valid IPv4 addresses for all fields.");
+                            return;
+                        }
+
+                        // 将静态 IP 配置字段添加到 advancedData 对象中
+                        advancedData.ip = ip;
+                        advancedData.gateway = gateway;
+                        advancedData.netmask = netmask;
+                        advancedData.dns = dns;
+                    }
+
+                    // 将 advancedData 作为 advanced_settings_enabled 的值
+                    data.advanced_settings_enabled = advancedData;
+                } else {
+                    // 如果没有勾选高级设置，不发送 advanced_settings_enabled
+                    //data.advanced_settings_enabled = false;
+                }
 
                 fetch('/wifi_config', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(data),
                 })
                 .then(response => response.json())
-                .then(data => {
-                    alert('Wi-Fi configuration successful!');
+                .then(result => {
+                    console.log('Success:', result);
+                    alert('Wi-Fi configuration successful');
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('There was an error submitting your configuration.');
+                    alert('Wi-Fi configuration failed');
                 });
             });
 
