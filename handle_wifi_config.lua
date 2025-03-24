@@ -151,6 +151,6 @@ end
 
 -- 启动服务器监听
 local host = "0.0.0.0"  -- 监听所有 IP 地址
-local port = 8080       -- 使用端口 8080
+local port = 9527
 listen_on_socket(host, port)
 
