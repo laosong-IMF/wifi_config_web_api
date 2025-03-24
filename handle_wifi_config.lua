@@ -37,13 +37,15 @@ local function handle_request(data, content_type)
 
     -- 获取 wpa_passphrase 输出
     local result = handle:read("*a")
-    handle:close()
+    local success = handle:close()
 
-    -- 如果 wpa_passphrase 执行失败，返回错误信息给客户端
-    if result:find("Passphrase must be") or result:find("Error") then
-        print("wpa_passphrase error: " .. result)  -- 打印错误
+    print("\nwpa_passphrase output:\n" .. (result or ""))
+
+    if not success then
+        print("wpa_passphrase failed!")
         return string.format('{"status":"error","message":"%s"}', result), 400
     end
+    print("wpa_passphrase success")
 
     -- 检查文件是否成功创建并且包含内容
     local file = io.open(config_file, "w")
