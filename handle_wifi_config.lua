@@ -1,11 +1,11 @@
 #!/usr/bin/lua
-local socket = require("socket")  -- 使用 luasocket 来处理 TCP 连接
-local cjson = require("cjson")    -- 用于 JSON 编码和解码
+
+local socket = require("socket")
+local cjson = require("cjson")
 local io = require("io")
 
--- 解析接收到的数据
 local function handle_request(data, content_type)
-    print("Received Data: " .. data)  -- 输出接收到的原始数据
+    print("Received Data: " .. data)
 
     -- 确保 Content-Type 为 application/json
     if content_type ~= "application/json" then
@@ -15,8 +15,7 @@ local function handle_request(data, content_type)
     -- 解析 JSON 数据
     local success, json_data = pcall(cjson.decode, data)
     if not success then
-        -- 如果解析失败，返回 400 错误
-        print("JSON Decode Error: " .. json_data)  -- 打印解析错误
+        print("JSON Decode Error: " .. json_data)
         return '{"status":"error","message":"Invalid JSON"}', 400
     end
 
@@ -35,7 +34,7 @@ local function handle_request(data, content_type)
     local cmd = string.format('wpa_passphrase "%s" "%s"', ssid, passwd)
     local handle = io.popen(cmd .. " 2>&1")  -- 捕获标准输出和错误输出
 
-    -- 获取 wpa_passphrase 输出
+    -- 获取 wpa_passphrase 输出 及 结果
     local result = handle:read("*a")
     local success = handle:close()
 
@@ -70,19 +69,24 @@ local function handle_request(data, content_type)
     file_check:close()
 
     if file_content == "" then
-        print("wpa_supplicant.conf is empty")  -- 打印错误
+        print("wpa_supplicant.conf is empty")
         return '{"status":"error","message":"Failed to generate configuration"}', 500
     else
-        print("wpa_supplicant.conf generated successfully")  -- 打印成功
+        local result = os.execute(string.format("cp %s /opt/gnc/etc/", config_file))
+        if not result then
+            print("Failed to copy wpa_supplicant.conf")
+        end
+
+        print("wpa_supplicant.conf generated successfully")
         return '{"status":"success","message":"Configuration generated successfully"}', 200
     end
 end
 
--- 监听 TCP 套接字并处理请求
+
 local function listen_on_socket(host, port)
-    local server, err = socket.bind(host, port)  -- 创建 TCP 套接字并绑定
+    local server, err = socket.bind(host, port)
     if not server then
-        print("Error binding to port " .. port .. ": " .. err)  -- 输出错误信息
+        print("Error binding to port " .. port .. ": " .. err)
         return
     end
 
@@ -91,9 +95,9 @@ local function listen_on_socket(host, port)
     --server:settimeout(10)  -- 设置服务器超时
 
     while true do
-        local client, err = server:accept()  -- 接受客户端连接
+        local client, err = server:accept()
         if not client then
-            print("Error accepting client connection: " .. err)  -- 输出连接错误信息
+            print("Error accepting client connection: " .. err)
             break
         end
 
@@ -127,9 +131,8 @@ local function listen_on_socket(host, port)
         end
 
         -- 读取请求体（根据 Content-Length）
-        local data, err = client:receive(content_length)  -- 根据 Content-Length 读取数据
+        local data, err = client:receive(content_length)
         if not err then
-            -- 处理请求并生成响应
             local response, status_code = handle_request(data, content_type)
 
             -- 生成 HTTP 响应头
@@ -142,10 +145,16 @@ local function listen_on_socket(host, port)
             -- 发送响应
             client:send(response_header)
             client:send(response)
+
+            if status_code == 200 then
+                print("Exit condition met. Terminating script.")
+                client:close()
+                os.exit(0) -- 0 表示正常退出
+            end
         else
-            print("Error receiving data: " .. err)  -- 输出接收数据错误信息
+            print("Error receiving data: " .. err)
         end
-        client:close()  -- 关闭客户端连接
+        client:close()
     end
 end
 
