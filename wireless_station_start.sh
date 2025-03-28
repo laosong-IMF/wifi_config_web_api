@@ -20,19 +20,25 @@ ip link set wlan0 up
 echo "Starting wpa_supplicant..."
 wpa_supplicant -D nl80211 -i wlan0 -c $WPA_SUPPLICANT_CONF -B
 
-echo "Waiting for wpa_supplicant to connect to the AP..."
+echo "Waiting for wpa_supplicant to authenticate with the AP..."
 max_retries=30
 for i in $(seq 1 $max_retries); do
     sleep 1
-    if iw dev wlan0 link | grep -q "Connected to"; then
-        echo "Successfully connected to the AP."
+    # 使用 wpa_cli 检查认证状态
+    auth_status=$(wpa_cli -i wlan0 status 2>/dev/null | grep "wpa_state" | cut -d= -f2)
+
+    if [ "$auth_status" = "COMPLETED" ]; then
+        echo "Successfully authenticated with the AP."
         break
+    else
+        echo "Waiting for authentication... ($i/$max_retries)"
+        echo "Current state: $auth_status"
     fi
-    echo "Waiting for connection... ($i/$max_retries)"
 done
 
-if [ $i -eq $max_retries ]; then
-    echo "Error: wpa_supplicant failed to connect to the AP. Exiting."
+if [ "$i" -eq "$max_retries" ] && [ "$auth_status" != "COMPLETED" ]; then
+    echo "Error: Failed to authenticate within $max_retries seconds."
+    wpa_cli -i wlan0 status
     exit 1
 fi
 
