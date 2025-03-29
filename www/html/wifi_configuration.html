@@ -330,8 +330,9 @@
                 togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
             });
 
-            document.getElementById('wifiForm').addEventListener('submit', function(event) {
-                event.preventDefault();
+            document.getElementById('wifiForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+
                 const formData = new FormData(this);
                 const networkType = formData.get('network-type');
                 const data = {
@@ -359,7 +360,7 @@
 
                         // 验证静态 IP 配置字段
                         if (!ipv4Regex.test(ip) || !ipv4Regex.test(gateway) || !ipv4Regex.test(netmask) || !ipv4Regex.test(dns)) {
-                            alert("Please enter valid IPv4 addresses for all fields.");
+                            alert("Please enter valid IPv4 addresses for all IP Configuration fields.");
                             return;
                         }
 
