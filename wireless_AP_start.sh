@@ -4,7 +4,7 @@
 AP_IP="192.168.100.1"
 HOSTAPD_CONF="/opt/gnc/etc/hostapd.conf"
 DNSMASQ_CONF="/opt/gnc/etc/dnsmasq.conf"
-NGINX_CMD="/opt/gnc/www/S50nginx"
+NGINX_CMD="/opt/gnc/etc/script/S50nginx"
 
 # Check if hostapd or dnsmasq is already running
 if pgrep -f "hostapd" > /dev/null || pgrep -f "dnsmasq" > /dev/null; then

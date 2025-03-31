@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Configuration variables
-NGINX_CMD="/opt/gnc/www/S50nginx"
+NGINX_CMD="/opt/gnc/etc/script/S50nginx"
 
 # Get list of all connected stations
 connected_stations=$(hostapd_cli -i wlan0 all_sta | awk '/^[[:xdigit:]:]{17}/ {print $1}')
