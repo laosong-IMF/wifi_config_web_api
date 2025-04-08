@@ -24,7 +24,6 @@ echo "Waiting for wpa_supplicant to authenticate with the AP..."
 max_retries=30
 for i in $(seq 1 $max_retries); do
     sleep 1
-    # 使用 wpa_cli 检查认证状态
     auth_status=$(wpa_cli -i wlan0 status 2>/dev/null | grep "wpa_state" | cut -d= -f2)
 
     if [ "$auth_status" = "COMPLETED" ]; then
@@ -39,7 +38,8 @@ done
 if [ "$i" -eq "$max_retries" ] && [ "$auth_status" != "COMPLETED" ]; then
     echo "Error: Failed to authenticate within $max_retries seconds."
     wpa_cli -i wlan0 status
-    exit 1
+    #有一种场景是AP当前不可用但是后续可用，不返回以让后面的udhcpc在后台运行
+    #exit 1
 fi
 
 echo "Starting udhcpc to obtain IP address for wlan0..."
